@@ -1,44 +1,9 @@
-class SpaceObject {
-  constructor (value) {
-    this.value = value;
-    this.directOrbit = [];
-    this.indirectOrbit = [];
-  }
-};
-
 let orbitMap = [];
-let spaceObjects = new Map();
+const estallarMap = {};
 
-const addToDirect = (parent, child) => {
-  spaceObjects.get(parent).directOrbit.push(child);
+const calculateOrbits = (planet, map, jumps = 0) => {
+  return map[planet] !== undefined ? calculateOrbits(map[planet], map, ++jumps) : jumps;
 };
-
-const addToIndirect = (parent, child) => {
-  for (let [key, spaceObj] of spaceObjects) {
-    if (spaceObj.directOrbit.indexOf(parent) > -1) {
-      spaceObj.indirectOrbit.push(child);
-      // recursively until root
-      addToIndirect(spaceObj.value, child);
-    }
-  };
-};
-
-const process = () => {
-  orbitMap.forEach(orbit => {
-    let objects = orbit.split(')');
-    // Add to space objects if not there already.
-    if (!spaceObjects.has(objects[0])) {
-      spaceObjects.set(objects[0], new SpaceObject(objects[0]));
-    }
-    // Add to direct
-    addToDirect(objects[0], objects[1]);
-  });
-  // Add to indirect recursively until root
-  orbitMap.forEach(orbit => {
-    let objects = orbit.split(')');
-    addToIndirect(objects[0], objects[1]);
-  });
-}
 
 var lineReader = require('readline').createInterface({
   input: require('fs').createReadStream('6.input')
@@ -49,15 +14,53 @@ lineReader
     orbitMap.push(line);
   })
   .on('close', () => {
-    process();
-
-    // 5-I
-    // let number = 0;
-    // spaceObjects.forEach(obj => {
-    //   number += obj.directOrbit.length;
-    //   number += obj.indirectOrbit.length;
-    // });
-    // console.log(number);
-
-    // 5-II
+    // process_part1();
+    process_part2();
   });
+
+const process_part1 = () => {
+  orbitMap.forEach(value => {
+    const [center, inOrbit] = value.split(')');
+    if(!estallarMap[inOrbit]) estallarMap[inOrbit] = [center];
+  });
+
+  console.log(Object.keys(estallarMap).reduce(
+    (accumulator, currentValue) => accumulator + calculateOrbits(currentValue, estallarMap), 0
+  ));
+};
+
+const navigate = (planet, map, origin = 'YOU', jumps = 0) => {
+  for(let i=0; i < map[planet].length; i++) {
+    const orbitObject = map[planet][i];
+    let currentJumps = jumps;
+    if (orbitObject === 'SAN') {
+      console.log(`Found Santa on ${planet} at ${jumps} jumps`);
+      return jumps;
+    }
+    if (orbitObject !== origin) {
+      //console.log(`Going from ${planet} to ${orbitObject} with ${jumps} jumps`);
+      const isValidRoute = navigate(orbitObject, map, planet, ++currentJumps);
+      if (isValidRoute !== -1) return isValidRoute;
+    }
+  }
+  //console.log(`Dead end on planet ${planet}`);
+  return -1;
+}
+
+const process_part2 = () => {
+  orbitMap.forEach(value => {
+    const [center, inOrbit] = value.split(')');
+    if(estallarMap[center] === undefined) {
+      estallarMap[center] = [inOrbit];
+    } else {
+      estallarMap[center].push(inOrbit);
+    }
+    if(estallarMap[inOrbit] === undefined) {
+      estallarMap[inOrbit] = [center];
+    } else {
+      estallarMap[inOrbit].push(center);
+    }
+  });
+
+  navigate(estallarMap['YOU'], estallarMap);
+};
