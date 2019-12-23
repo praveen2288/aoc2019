@@ -2,10 +2,12 @@ const POSITION_MODE = 0;
 const IMMEDIATE_MODE = 1;
 
 class Computer {
-  constructor(input, program) {
+  constructor (input, program) {
     this.input = input;
-    this.inputCounter = 0;
     this.program = program;
+    this.output = 0;
+    this.halted = false;
+    this.pointer = 0;
   }
 
   splitcode(value) {
@@ -28,51 +30,54 @@ class Computer {
     }
   }
 
-  compute() {
+  run(signal) {
+    if (signal !== undefined) {
+      this.input.push(signal);
+    }
     let arr = this.program;
-    let pointer = 0;
-    while (true) {
-      let split = this.splitcode(arr[pointer]);
+    while (this.pointer < arr.length) {
+      let split = this.splitcode(arr[this.pointer]);
       let opcode = split.opcode;
       //console.log(split);
       if (opcode === 1) {
-        let [opc, param1, param2, position] = arr.slice(pointer, pointer + 4);
+        let [opc, param1, param2, position] = arr.slice(this.pointer, this.pointer + 4);
         arr[position] = this.getValue(arr, param1, split.param1mode) + this.getValue(arr, param2, split.param2mode);
-        pointer += 4;
+        this.pointer += 4;
       } else if (opcode === 2) {
-        let [opc, param1, param2, position] = arr.slice(pointer, pointer + 4);
+        let [opc, param1, param2, position] = arr.slice(this.pointer, this.pointer + 4);
         arr[position] = this.getValue(arr, param1, split.param1mode) * this.getValue(arr, param2, split.param2mode);
-        pointer += 4;
+        this.pointer += 4;
       } else if (opcode === 3) {
         // Input
-        let [opc, position] = arr.slice(pointer, pointer + 2);
-        arr[position] = this.input[this.inputCounter++];
-        pointer += 2;
+        let [opc, position] = arr.slice(this.pointer, this.pointer + 2);
+        arr[position] = this.input.shift();
+        this.pointer += 2;
       } else if (opcode === 4) {
         // Output
-        let [opc, position] = arr.slice(pointer, pointer + 2);
-        return arr[position];
-        pointer += 2;
+        let [opc, position] = arr.slice(this.pointer, this.pointer + 2);
+        this.pointer += 2;
+        this.output = arr[position];
+        return this.output;
       } else if (opcode === 5) {
-        let [opc, param1, param2, postition] = arr.slice(pointer, pointer + 3);
+        let [opc, param1, param2, postition] = arr.slice(this.pointer, this.pointer + 3);
         let param1Value = this.getValue(arr, param1, split.param1mode);
         let param2Value = this.getValue(arr, param2, split.param2mode);
         if (param1Value !== 0) {
-          pointer = param2Value;
+          this.pointer = param2Value;
         } else {
-          pointer += 3;
+          this.pointer += 3;
         }
       } else if (opcode === 6) {
-        let [opc, param1, param2, postition] = arr.slice(pointer, pointer + 3);
+        let [opc, param1, param2, postition] = arr.slice(this.pointer, this.pointer + 3);
         let param1Value = this.getValue(arr, param1, split.param1mode);
         let param2Value = this.getValue(arr, param2, split.param2mode);
         if (param1Value === 0) {
-          pointer = param2Value;
+          this.pointer = param2Value;
         } else {
-          pointer += 3;
+          this.pointer += 3;
         }
       } else if (opcode === 7) {
-        let [opc, param1, param2, postition] = arr.slice(pointer, pointer + 4);
+        let [opc, param1, param2, postition] = arr.slice(this.pointer, this.pointer + 4);
         let param1Value = this.getValue(arr, param1, split.param1mode);
         let param2Value = this.getValue(arr, param2, split.param2mode);
         if (param1Value < param2Value) {
@@ -80,9 +85,9 @@ class Computer {
         } else {
           arr[postition] = 0;
         }
-        pointer += 4;
+        this.pointer += 4;
       } else if (opcode === 8) {
-        let [opc, param1, param2, postition] = arr.slice(pointer, pointer + 4);
+        let [opc, param1, param2, postition] = arr.slice(this.pointer, this.pointer + 4);
         let param1Value = this.getValue(arr, param1, split.param1mode);
         let param2Value = this.getValue(arr, param2, split.param2mode);
         if (param1Value === param2Value) {
@@ -90,13 +95,16 @@ class Computer {
         } else {
           arr[postition] = 0;
         }
-        pointer += 4;
+        this.pointer += 4;
       } else if (opcode === 99) {
-        console.log('Program Halted!');
-        return -1;
-        // return arr;
+        this.halted = true;
+        // console.log('Program Halted!');
       } else {
-        // return arr;
+        console.log('Unknown Opcode');
+      }
+
+      if (this.halted) {
+        return this.output;
       }
     }
   }
@@ -144,35 +152,31 @@ const getAllPermutations = (string) => {
 // 7 - I
 // let program = [3,8,1001,8,10,8,105,1,0,0,21,34,51,76,101,114,195,276,357,438,99999,3,9,1001,9,3,9,1002,9,3,9,4,9,99,3,9,101,4,9,9,102,4,9,9,1001,9,5,9,4,9,99,3,9,1002,9,4,9,101,3,9,9,102,5,9,9,1001,9,2,9,1002,9,2,9,4,9,99,3,9,1001,9,3,9,102,2,9,9,101,4,9,9,102,3,9,9,101,2,9,9,4,9,99,3,9,102,2,9,9,101,4,9,9,4,9,99,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,99,3,9,101,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,99,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,99,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,101,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,99];
 // let phaseSettings = getAllPermutations('01234');
-// let signals = {};
-// for(let i=0; i < phaseSettings.length; i++) {
-//   let phaseSetting = phaseSettings[i];
-//   let input = 0;
-//   for(let j=0; j < 5; j++) {
-//     let amp = new Computer([parseInt(phaseSetting[j]), parseInt(input)], [...program])
-//     input = amp.compute();
-//   }
-//   signals[phaseSetting] = input;
-// }
-
-// let values = Object.values(signals);
-// console.log(Math.max(...values))
 
 // 7 - II
-let program = [3,8,1001,8,10,8,105,1,0,0,21,34,51,76,101,114,195,276,357,438,99999,3,9,1001,9,3,9,1002,9,3,9,4,9,99,3,9,101,4,9,9,102,4,9,9,1001,9,5,9,4,9,99,3,9,1002,9,4,9,101,3,9,9,102,5,9,9,1001,9,2,9,1002,9,2,9,4,9,99,3,9,1001,9,3,9,102,2,9,9,101,4,9,9,102,3,9,9,101,2,9,9,4,9,99,3,9,102,2,9,9,101,4,9,9,4,9,99,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,99,3,9,101,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,99,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,99,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,101,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,99];
+const outputs = [];
+let program = [3, 8, 1001, 8, 10, 8, 105, 1, 0, 0, 21, 34, 51, 76, 101, 114, 195, 276, 357, 438, 99999, 3, 9, 1001, 9, 3, 9, 1002, 9, 3, 9, 4, 9, 99, 3, 9, 101, 4, 9, 9, 102, 4, 9, 9, 1001, 9, 5, 9, 4, 9, 99, 3, 9, 1002, 9, 4, 9, 101, 3, 9, 9, 102, 5, 9, 9, 1001, 9, 2, 9, 1002, 9, 2, 9, 4, 9, 99, 3, 9, 1001, 9, 3, 9, 102, 2, 9, 9, 101, 4, 9, 9, 102, 3, 9, 9, 101, 2, 9, 9, 4, 9, 99, 3, 9, 102, 2, 9, 9, 101, 4, 9, 9, 4, 9, 99, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 99, 3, 9, 101, 2, 9, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 101, 1, 9, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 99, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 99, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 101, 1, 9, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 3, 9, 102, 2, 9, 9, 4, 9, 99, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 3, 9, 101, 1, 9, 9, 4, 9, 3, 9, 101, 2, 9, 9, 4, 9, 3, 9, 101, 1, 9, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 3, 9, 1001, 9, 1, 9, 4, 9, 3, 9, 1001, 9, 2, 9, 4, 9, 3, 9, 1002, 9, 2, 9, 4, 9, 99];
 let phaseSettings = getAllPermutations('56789');
-let signals = {};
-for(let i=0; i < phaseSettings.length; i++) {
+for (let i = 0; i < phaseSettings.length; i++) {
   let phaseSetting = phaseSettings[i];
   let input = 0;
-  let amplifiers = [];
-  for(let j=0; j < 5; j++) {
-    let amp = new Computer([parseInt(phaseSetting[j]), parseInt(input)], [...program]);
-    amplifiers.push(amp);
-    input = amp.compute();
+  const A = new Computer([parseInt(phaseSetting[0])], [...program]);
+  const B = new Computer([parseInt(phaseSetting[1])], [...program]);
+  const C = new Computer([parseInt(phaseSetting[2])], [...program]);
+  const D = new Computer([parseInt(phaseSetting[3])], [...program]);
+  const E = new Computer([parseInt(phaseSetting[4])], [...program]);
+
+  while (true) {
+    let output1 = A.run(input);
+    let output2 = B.run(output1);
+    let output3 = C.run(output2);
+    let output4 = D.run(output3);
+    input = E.run(output4);
+    if (E.halted) {
+      break;
+    }
   }
-  signals[phaseSetting] = input;
+  outputs.push(input);
 }
 
-let values = Object.values(signals);
-console.log(Math.max(...values))
+console.log(Math.max(...outputs));
